@@ -1,137 +1,96 @@
-import java.util.HashMap;
-import java.util.Map;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /**
- * UseCase3InventorySetup
+ * UseCase5BookingRequestQueue
  *
- * Demonstrates centralized room inventory management using HashMap.
- * Availability of room types is stored in a single data structure
- * to ensure consistent updates and fast lookups.
+ * Demonstrates how booking requests are collected and ordered
+ * using a Queue to ensure First-Come-First-Served processing.
  *
- * Version: 3.1
+ * Version: 5.1
  */
 
-/* ------------------- DOMAIN MODEL ------------------- */
 
-// Abstract Room class
-abstract class Room {
+/* -------------------- Reservation CLASS -------------------- */
 
+class Reservation {
+
+    String guestName;
     String roomType;
-    int beds;
-    int size;
-    double price;
 
-    Room(String roomType, int beds, int size, double price) {
+    Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
         this.roomType = roomType;
-        this.beds = beds;
-        this.size = size;
-        this.price = price;
     }
 
-    void displayRoomDetails() {
-        System.out.println("Room Type: " + roomType);
-        System.out.println("Beds: " + beds);
-        System.out.println("Room Size: " + size + " sq.ft");
-        System.out.println("Price per Night: ₹" + price);
-    }
-}
-
-// Single Room
-class SingleRoom extends Room {
-    SingleRoom() {
-        super("Single", 1, 200, 2500);
-    }
-}
-
-// Double Room
-class DoubleRoom extends Room {
-    DoubleRoom() {
-        super("Double", 2, 350, 4000);
-    }
-}
-
-// Suite Room
-class SuiteRoom extends Room {
-    SuiteRoom() {
-        super("Suite", 3, 600, 7500);
+    void displayReservation() {
+        System.out.println("Guest: " + guestName + " | Requested Room: " + roomType);
     }
 }
 
 
-/* ------------------- INVENTORY COMPONENT ------------------- */
+/* -------------------- BOOKING REQUEST QUEUE -------------------- */
 
-class RoomInventory {
+class BookingRequestQueue {
 
-    // Centralized storage for room availability
-    private HashMap<String, Integer> inventory;
+    private Queue<Reservation> requestQueue;
 
-    // Constructor initializes availability
-    RoomInventory() {
-
-        inventory = new HashMap<>();
-
-        inventory.put("Single", 5);
-        inventory.put("Double", 3);
-        inventory.put("Suite", 2);
+    BookingRequestQueue() {
+        requestQueue = new LinkedList<>();
     }
 
-    // Retrieve availability
-    int getAvailability(String roomType) {
-        return inventory.getOrDefault(roomType, 0);
+    // Add booking request
+    void addRequest(Reservation reservation) {
+        requestQueue.offer(reservation);
+        System.out.println("Booking request added for: " + reservation.guestName);
     }
 
-    // Update availability
-    void updateAvailability(String roomType, int newCount) {
-        inventory.put(roomType, newCount);
-    }
+    // Display all queued requests
+    void displayRequests() {
 
-    // Display current inventory
-    void displayInventory() {
+        System.out.println("\n------ Booking Request Queue (FIFO Order) ------");
 
-        System.out.println("------ Current Room Inventory ------");
+        if (requestQueue.isEmpty()) {
+            System.out.println("No booking requests in queue.");
+            return;
+        }
 
-        for (Map.Entry<String, Integer> entry : inventory.entrySet()) {
-            System.out.println(entry.getKey() + " Rooms Available: " + entry.getValue());
+        for (Reservation r : requestQueue) {
+            r.displayReservation();
         }
     }
 }
 
 
-/* ------------------- APPLICATION ENTRY ------------------- */
+/* -------------------- MAIN APPLICATION -------------------- */
 
-public class bookMyStay {
+public class bookMyStay{
 
     public static void main(String[] args) {
 
         System.out.println("=====================================");
-        System.out.println("   Welcome to Hotel Booking System   ");
-        System.out.println("           Version 3.1               ");
+        System.out.println("   Hotel Booking Request System");
+        System.out.println("           Version 5.1");
         System.out.println("=====================================\n");
 
-        // Create room objects (domain model)
-        Room single = new SingleRoom();
-        Room dbl = new DoubleRoom();
-        Room suite = new SuiteRoom();
 
-        // Initialize inventory system
-        RoomInventory inventory = new RoomInventory();
+        // Initialize booking queue
+        BookingRequestQueue bookingQueue = new BookingRequestQueue();
 
-        // Display room details
-        System.out.println("---- Room Types ----\n");
 
-        single.displayRoomDetails();
-        System.out.println("Available: " + inventory.getAvailability("Single"));
-        System.out.println();
+        // Simulated guest booking requests
+        Reservation r1 = new Reservation("Alice", "Single");
+        Reservation r2 = new Reservation("Bob", "Double");
+        Reservation r3 = new Reservation("Charlie", "Suite");
 
-        dbl.displayRoomDetails();
-        System.out.println("Available: " + inventory.getAvailability("Double"));
-        System.out.println();
 
-        suite.displayRoomDetails();
-        System.out.println("Available: " + inventory.getAvailability("Suite"));
-        System.out.println();
+        // Add requests to queue
+        bookingQueue.addRequest(r1);
+        bookingQueue.addRequest(r2);
+        bookingQueue.addRequest(r3);
 
-        // Display centralized inventory
-        inventory.displayInventory();
+
+        // Display queued requests
+        bookingQueue.displayRequests();
     }
 }
