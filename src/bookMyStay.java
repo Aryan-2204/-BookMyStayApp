@@ -1,17 +1,16 @@
-import java.util.LinkedList;
-import java.util.Queue;
+import java.util.*;
 
 /**
- * UseCase5BookingRequestQueue
+ * UseCase11ConcurrentBooking
  *
- * Demonstrates how booking requests are collected using
- * a Queue to maintain First-Come-First-Served ordering.
+ * Demonstrates thread-safe booking using synchronization.
+ * Prevents race conditions and double allocation.
  *
- * Version: 5.1
+ * Version: 11.1
  */
 
 
-/* ---------------- RESERVATION CLASS ---------------- */
+/* ---------------- RESERVATION ---------------- */
 
 class Reservation {
 
@@ -22,41 +21,97 @@ class Reservation {
         this.guestName = guestName;
         this.roomType = roomType;
     }
+}
 
-    void displayReservation() {
-        System.out.println("Guest: " + guestName + " | Requested Room: " + roomType);
+
+/* ---------------- THREAD-SAFE INVENTORY ---------------- */
+
+class RoomInventory {
+
+    private Map<String, Integer> inventory;
+
+    RoomInventory() {
+        inventory = new HashMap<>();
+        inventory.put("Single", 1);
+        inventory.put("Double", 1);
+    }
+
+    // synchronized ensures only one thread enters at a time
+    public synchronized boolean allocateRoom(String roomType) {
+
+        int available = inventory.getOrDefault(roomType, 0);
+
+        if (available > 0) {
+            System.out.println(Thread.currentThread().getName()
+                    + " allocating " + roomType);
+
+            inventory.put(roomType, available - 1);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public void display() {
+        System.out.println("\nFinal Inventory:");
+        for (String key : inventory.keySet()) {
+            System.out.println(key + ": " + inventory.get(key));
+        }
     }
 }
 
 
-/* ---------------- BOOKING REQUEST QUEUE ---------------- */
+/* ---------------- SHARED QUEUE ---------------- */
 
-class BookingRequestQueue {
+class BookingQueue {
 
-    private Queue<Reservation> requestQueue;
+    private Queue<Reservation> queue = new LinkedList<>();
 
-    BookingRequestQueue() {
-        requestQueue = new LinkedList<>();
+    public synchronized void addRequest(Reservation r) {
+        queue.offer(r);
     }
 
-    // Add booking request to queue
-    void addBookingRequest(Reservation reservation) {
-        requestQueue.offer(reservation);
-        System.out.println("Booking request received from: " + reservation.guestName);
+    public synchronized Reservation getRequest() {
+        return queue.poll();
+    }
+}
+
+
+/* ---------------- THREAD PROCESSOR ---------------- */
+
+class BookingProcessor extends Thread {
+
+    private BookingQueue queue;
+    private RoomInventory inventory;
+
+    BookingProcessor(BookingQueue queue, RoomInventory inventory, String name) {
+        super(name);
+        this.queue = queue;
+        this.inventory = inventory;
     }
 
-    // Display all requests in queue
-    void displayQueue() {
+    public void run() {
 
-        System.out.println("\n------ Booking Request Queue (FIFO) ------");
+        while (true) {
 
-        if (requestQueue.isEmpty()) {
-            System.out.println("No booking requests available.");
-            return;
-        }
+            Reservation r;
 
-        for (Reservation r : requestQueue) {
-            r.displayReservation();
+            // synchronized queue access
+            synchronized (queue) {
+                r = queue.getRequest();
+            }
+
+            if (r == null) {
+                break;
+            }
+
+            boolean success = inventory.allocateRoom(r.roomType);
+
+            if (success) {
+                System.out.println(getName() + " SUCCESS for " + r.guestName);
+            } else {
+                System.out.println(getName() + " FAILED for " + r.guestName);
+            }
         }
     }
 }
@@ -64,32 +119,43 @@ class BookingRequestQueue {
 
 /* ---------------- MAIN APPLICATION ---------------- */
 
-public class bookMyStay {
+public class bookMyStay{
 
     public static void main(String[] args) {
 
         System.out.println("=====================================");
-        System.out.println("   Hotel Booking Request System");
-        System.out.println("           Version 5.1");
+        System.out.println("   Concurrent Booking Simulation");
+        System.out.println("           Version 11.1");
         System.out.println("=====================================\n");
 
-        // Initialize booking queue
-        BookingRequestQueue bookingQueue = new BookingRequestQueue();
+        RoomInventory inventory = new RoomInventory();
+        BookingQueue queue = new BookingQueue();
 
-        // Guests submit booking requests
-        Reservation r1 = new Reservation("Alice", "Single");
-        Reservation r2 = new Reservation("Bob", "Double");
-        Reservation r3 = new Reservation("Charlie", "Suite");
+        // Simulate multiple guest requests
+        queue.addRequest(new Reservation("Alice", "Single"));
+        queue.addRequest(new Reservation("Bob", "Single"));
+        queue.addRequest(new Reservation("Charlie", "Double"));
+        queue.addRequest(new Reservation("David", "Double"));
 
-        // Add requests to queue
-        bookingQueue.addBookingRequest(r1);
-        bookingQueue.addBookingRequest(r2);
-        bookingQueue.addBookingRequest(r3);
+        // Create multiple threads (simulating concurrent users)
+        Thread t1 = new BookingProcessor(queue, inventory, "Thread-1");
+        Thread t2 = new BookingProcessor(queue, inventory, "Thread-2");
 
-        // Display queued requests
-        bookingQueue.displayQueue();
+        // Start threads
+        t1.start();
+        t2.start();
 
-        System.out.println("\nAll requests stored in arrival order.");
-        System.out.println("Room allocation will be handled in the next use case.");
+        // Wait for completion
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        // Final state
+        inventory.display();
+
+        System.out.println("\nAll bookings processed safely without conflicts.");
     }
-}
+}}
